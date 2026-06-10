@@ -1,4 +1,4 @@
-id,st.name,st.grade,st.teacher,st.class
+id,st_name,st.grade,st_teacher,st_class
 1,John Smith,89,Mr. Anderson,Mathematics
 2,Emma Johnson,92,Mr. Anderson,Mathematics
 3,Michael Brown,76,Mr. Anderson,Mathematics

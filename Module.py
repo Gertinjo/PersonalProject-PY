@@ -1,9 +1,9 @@
 from pydantic import BaseModel
 
-class StudentCreate(BaseModel):
+class studentCreate(BaseModel):
     Name: str
     Grade: str
     Teacher: str
     Class: str
-class Student(StudentCreate):
+class student(studentCreate):
     id: int
