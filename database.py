@@ -1,6 +1,5 @@
 import sqlite3
-# Assuming student and studentCreate are Pydantic models or classes in Module.py
-from Module import student, studentCreate
+from Module import student, studentCreate, attendance, attendanceCreate
 
 
 def create_connection():
@@ -10,7 +9,6 @@ def create_connection():
 
 
 def create_table():
-    """Creates the student table in the database if it doesn't exist."""
     with create_connection() as connection:
         cursor = connection.cursor()
         cursor.execute('''
@@ -22,11 +20,21 @@ def create_table():
                 st_subject TEXT NOT NULL
             )
         ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS Attendance (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id INTEGER NOT NULL,
+                present INTEGER NOT NULL,
+                FOREIGN KEY (student_id) REFERENCES Student_grade(id)
+            )
+        ''')
         connection.commit()
 
 
 create_table()
 
+
+# ── Student CRUD ─────────────────────────────────────────────────────────────
 
 def create_student(student_data: studentCreate) -> int:
     with create_connection() as connection:
@@ -40,13 +48,10 @@ def create_student(student_data: studentCreate) -> int:
 
 
 def read_students():
-    """Retrieves all students from the database."""
     with create_connection() as connection:
         cursor = connection.cursor()
         cursor.execute("SELECT * FROM Student_grade")
         rows = cursor.fetchall()
-
-        # SQLite Row objects allow dictionary-like access using the exact column names
         return [
             student(
                 id=row['id'],
@@ -59,15 +64,12 @@ def read_students():
 
 
 def read_student(student_id: int):
-    """Retrieves a single student from the database by its ID."""
     with create_connection() as connection:
         cursor = connection.cursor()
         cursor.execute("SELECT * FROM Student_grade WHERE id = ?", (student_id,))
         row = cursor.fetchone()
-
         if row is None:
             return None
-
         return student(
             id=row['id'],
             name=row['st_name'],
@@ -78,7 +80,6 @@ def read_student(student_id: int):
 
 
 def update_student(student_id: int, student_data: studentCreate) -> bool:
-    """Updates an existing student in the database."""
     with create_connection() as connection:
         cursor = connection.cursor()
         cursor.execute(
@@ -94,9 +95,61 @@ def update_student(student_id: int, student_data: studentCreate) -> bool:
 
 
 def delete_student(student_id: int) -> bool:
-    """Deletes a student from the database by its ID."""
     with create_connection() as connection:
         cursor = connection.cursor()
         cursor.execute("DELETE FROM Student_grade WHERE id = ?", (student_id,))
+        connection.commit()
+        return cursor.rowcount > 0
+
+
+# ── Attendance CRUD ───────────────────────────────────────────────────────────
+
+def create_attendance(data: attendanceCreate) -> int:
+    with create_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            "INSERT INTO Attendance (student_id, present) VALUES (?, ?)",
+            (data.student_id, int(data.present))
+        )
+        connection.commit()
+        return cursor.lastrowid
+
+
+def read_attendances():
+    with create_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM Attendance")
+        rows = cursor.fetchall()
+        return [
+            attendance(id=row['id'], student_id=row['student_id'], present=bool(row['present']))
+            for row in rows
+        ]
+
+
+def read_attendance(attendance_id: int):
+    with create_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM Attendance WHERE id = ?", (attendance_id,))
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return attendance(id=row['id'], student_id=row['student_id'], present=bool(row['present']))
+
+
+def update_attendance(attendance_id: int, data: attendanceCreate) -> bool:
+    with create_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            "UPDATE Attendance SET student_id = ?, present = ? WHERE id = ?",
+            (data.student_id, int(data.present), attendance_id)
+        )
+        connection.commit()
+        return cursor.rowcount > 0
+
+
+def delete_attendance(attendance_id: int) -> bool:
+    with create_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute("DELETE FROM Attendance WHERE id = ?", (attendance_id,))
         connection.commit()
         return cursor.rowcount > 0
