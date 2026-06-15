@@ -15,3 +15,4 @@ class attendanceCreate(BaseModel):
 
 class attendance(attendanceCreate):
     id: int
+

@@ -5,13 +5,12 @@ from Module import student, studentCreate, attendance, attendanceCreate
 
 app = FastAPI()
 
-
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the student CRUD API"}
 
 
-# ── Student endpoints ─────────────────────────────────────────────────────────
+# ── Student ─────────────────────────────────────────────────────────
 
 @app.post("/student/", response_model=dict)
 def create_student(student_data: studentCreate):
@@ -48,7 +47,7 @@ def delete_student(student_id: int):
     return {"message": "Student deleted successfully"}
 
 
-# ── Attendance endpoints ──────────────────────────────────────────────────────
+# ── Attendance ──────────────────────────────────────────────────────
 
 @app.post("/attendance/", response_model=dict)
 def create_attendance(data: attendanceCreate):
