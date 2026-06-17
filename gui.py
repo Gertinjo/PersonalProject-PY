@@ -1,137 +1,297 @@
 import streamlit as st
 import requests
 
-from Module import student
-
 st.title("Student App")
-action = st.sidebar.selectbox("Action", ["Create", "Update", "Read" ,"Delete", "Create Attendance ", "Update Attendance", "Read Attendance" ,"Delete Attendance"])
+
 url = "http://127.0.0.1:8000"
 
+action = st.sidebar.selectbox(
+    "Action",
+    [
+        "Create",
+        "Read",
+        "Update",
+        "Delete",
+        "Create Attendance",
+        "Read Attendance",
+        "Update Attendance",
+        "Delete Attendance",
+    ],
+)
+
+# =========================
+# STUDENTS
+# =========================
+
 if action == "Create":
+    st.subheader("Create Student")
+
     name = st.text_input("Name")
     subject = st.text_input("Subject")
     teacher = st.text_input("Teacher")
     grade = st.text_input("Grade")
+
     if st.button("Add Student"):
-        if name and grade and teacher and subject:
-            res = requests.post(f"{url}/student/", json={
-                "name": name, "grade": grade, "teacher": teacher, "subject": subject
-            })
+        if name and subject and teacher and grade:
+            res = requests.post(
+                f"{url}/student/",
+                json={
+                    "name": name,
+                    "subject": subject,
+                    "teacher": teacher,
+                    "grade": grade,
+                },
+            )
+
+            if res.status_code in [200, 201]:
+                st.success("Student added successfully")
+            else:
+                st.error(res.text)
+        else:
+            st.warning("Please fill all fields")
+
+
 elif action == "Read":
+    st.subheader("Students")
+
     if st.button("Refresh Students"):
-        st.session_state["students"] = requests.get(f"{url}/students/").json()
+        st.session_state["students"] = requests.get(
+            f"{url}/students/"
+        ).json()
 
     if "students" not in st.session_state:
-        st.session_state["students"] = requests.get(f"{url}/students/").json()
+        st.session_state["students"] = requests.get(
+            f"{url}/students/"
+        ).json()
 
     students = st.session_state["students"]
+
     if students:
         st.dataframe(students, use_container_width=True)
     else:
         st.info("No students found")
+
+
 elif action == "Update":
-
     st.subheader("Update Student")
-    upd_id = st.number_input("Student ID to update", min_value=1, step=1, key="upd_id")
-    upd_name = st.text_input("New Name", key="upd_name", value=student)
-    upd_grade = st.text_input("New Grade", key="upd_grade", value=student)
-    upd_teacher = st.text_input("New Teacher", key="upd_teacher", value=student)
-    upd_subject = st.text_input("New Subject", key="upd_subject", value=student)
-    if st.button("Submit"):
-        if upd_name and upd_grade and upd_teacher and upd_subject:
-            res = requests.put(f"{url}/student/{upd_id}", json={
-                "name": upd_name, "grade": upd_grade,
-                "teacher": upd_teacher, "subject": upd_subject
-            })
-# Fix Update Student to have the info already filled in when chosen the id where there is a drop down of wich one to choose
-elif action =="Delete":
-        st.subheader("Delete Student")
-        del_id = st.number_input("Student ID to delete", min_value=1, step=1, key="del_id")
 
-        if st.button("Delete Student"):
-            res = requests.delete(f"{url}/student/{del_id}")
+    students = requests.get(f"{url}/students/").json()
 
-# ── Attendance ──────────────────────────────────────────────────────
+    if not students:
+        st.warning("No students found")
+        st.stop()
 
-elif action == "Create Attendance ":
-    att_student_id = st.number_input(
+    selected_student = st.selectbox(
+        "Select Student",
+        options=[student["name"] for student in students],
+    )
+
+    student_data = next(
+        (
+            student
+            for student in students
+            if student["name"] == selected_student
+        ),
+        None,
+    )
+
+    if student_data:
+        upd_name = st.text_input(
+            "Name",
+            value=student_data.get("name", ""),
+        )
+
+        upd_grade = st.text_input(
+            "Grade",
+            value=student_data.get("grade", ""),
+        )
+
+        upd_teacher = st.text_input(
+            "Teacher",
+            value=student_data.get("teacher", ""),
+        )
+
+        upd_subject = st.text_input(
+            "Subject",
+            value=student_data.get("subject", ""),
+        )
+
+        if st.button("Update Student"):
+            student_id = student_data["id"]
+
+            res = requests.put(
+                f"{url}/student/{student_id}",
+                json={
+                    "name": upd_name,
+                    "grade": upd_grade,
+                    "teacher": upd_teacher,
+                    "subject": upd_subject,
+                },
+            )
+
+            if res.status_code == 200:
+                st.success("Student updated successfully")
+            else:
+                st.error(res.text)
+
+
+elif action == "Delete":
+    st.subheader("Delete Student")
+
+    del_id = st.number_input(
         "Student ID",
         min_value=1,
         step=1,
-        key="att_sid"
+    )
+
+    if st.button("Delete Student"):
+        res = requests.delete(f"{url}/student/{del_id}")
+
+        if res.status_code == 200:
+            st.success("Student deleted successfully")
+        else:
+            st.error(res.text)
+
+
+# ==========================
+# CREATE ATTENDANCE
+# ==========================
+elif action == "Create Attendance":
+    st.subheader("Create Attendance")
+
+    students = requests.get(f"{url}/students/").json()
+
+    if not students:
+        st.warning("No students found. Create a student first.")
+        st.stop()
+
+    selected_student = st.selectbox(
+        "Student",
+        options=students,
+        format_func=lambda x: f"{x['id']} - {x['name']}"
     )
 
     att_present = st.selectbox(
         "Present",
-        ["True", "False"]
+        [True, False]
     )
 
     if st.button("Add Attendance"):
         res = requests.post(
             f"{url}/attendance/",
             json={
-                "student_id": att_student_id,
-                "present": att_present == "True"
+                "student_id": selected_student["id"],
+                "present": att_present
             }
         )
 
+        if res.status_code in [200, 201]:
+            st.success("Attendance added successfully")
+        else:
+            st.error(res.text)
+
+
+# ==========================
+# READ ATTENDANCE
+# ==========================
 elif action == "Read Attendance":
-    if st.button("Refresh Attendance"):
-        st.session_state["attendances"] = requests.get(
+    st.subheader("Attendance Records")
+
+    try:
+        attendances = requests.get(
             f"{url}/attendances/"
         ).json()
 
-    if "attendances" not in st.session_state:
-        st.session_state["attendances"] = requests.get(
-            f"{url}/attendances/"
-        ).json()
+        if attendances:
+            st.dataframe(attendances, use_container_width=True)
+        else:
+            st.info("No attendance records found")
 
-    attendances = st.session_state["attendances"]
+    except Exception as e:
+        st.error(str(e))
 
-    if attendances:
-        st.dataframe(attendances, use_container_width=True)
-    else:
-        st.info("No attendance records found")
 
+# ==========================
+# UPDATE ATTENDANCE
+# ==========================
 elif action == "Update Attendance":
-    upd_att_id = st.number_input(
-        "Attendance ID to update",
-        min_value=1,
-        step=1,
-        key="upd_att_id"
+    st.subheader("Update Attendance")
+
+    attendances = requests.get(
+        f"{url}/attendances/"
+    ).json()
+
+    if not attendances:
+        st.warning("No attendance records found")
+        st.stop()
+
+    selected_attendance = st.selectbox(
+        "Select Attendance Record",
+        options=attendances,
+        format_func=lambda x: (
+            f"ID {x['id']} | "
+            f"Student {x['student_id']} | "
+            f"Present: {x['present']}"
+        )
     )
 
     upd_att_sid = st.number_input(
-        "New Student ID",
+        "Student ID",
         min_value=1,
-        step=1,
-        key="upd_att_sid"
+        value=selected_attendance["student_id"]
     )
 
     upd_att_present = st.selectbox(
         "Present",
-        ["True", "False"],
-        key="upd_att_present"
+        [True, False],
+        index=0 if selected_attendance["present"] else 1
     )
 
     if st.button("Update Attendance"):
         res = requests.put(
-            f"{url}/attendance/{upd_att_id}",
+            f"{url}/attendance/{selected_attendance['id']}",
             json={
                 "student_id": upd_att_sid,
-                "present": upd_att_present == "True"
+                "present": upd_att_present
             }
         )
 
+        if res.status_code == 200:
+            st.success("Attendance updated successfully")
+        else:
+            st.error(res.text)
+
+
+# ==========================
+# DELETE ATTENDANCE
+# ==========================
 elif action == "Delete Attendance":
-    del_att_id = st.number_input(
-        "Attendance ID to delete",
-        min_value=1,
-        step=1,
-        key="del_att_id"
+    st.subheader("Delete Attendance")
+
+    attendances = requests.get(
+        f"{url}/attendances/"
+    ).json()
+
+    if not attendances:
+        st.warning("No attendance records found")
+        st.stop()
+
+    selected_attendance = st.selectbox(
+        "Select Attendance Record",
+        options=attendances,
+        format_func=lambda x: (
+            f"ID {x['id']} | "
+            f"Student {x['student_id']} | "
+            f"Present: {x['present']}"
+        )
     )
 
     if st.button("Delete Attendance"):
         res = requests.delete(
-            f"{url}/attendance/{del_att_id}"
+            f"{url}/attendance/{selected_attendance['id']}"
         )
+
+        if res.status_code == 200:
+            st.success("Attendance deleted successfully")
+        else:
+            st.error(res.text)
