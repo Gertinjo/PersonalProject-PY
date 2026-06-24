@@ -75,64 +75,21 @@ elif action == "Read":
 elif action == "Update":
     st.subheader("Update Student")
 
-    students = requests.get(f"{url}/students/").json()
+    upd_id = st.number_input("Student ID", min_value=1, step=1)
+    name = st.text_input("Name")
+    grade = st.text_input("Grade")
+    teacher = st.text_input("Teacher")
+    subject = st.text_input("Subject")
 
-    if not students:
-        st.warning("No students found")
-        st.stop()
-
-    selected_student = st.selectbox(
-        "Select Student",
-        options=[student["name"] for student in students],
-    )
-
-    student_data = next(
-        (
-            student
-            for student in students
-            if student["name"] == selected_student
-        ),
-        None,
-    )
-
-    if student_data:
-        upd_name = st.text_input(
-            "Name",
-            value=student_data.get("name", ""),
+    if st.button("Update Student"):
+        res = requests.put(
+            f"{url}/student/{upd_id}",
+            json={"name": name, "grade": grade, "teacher": teacher, "subject": subject}
         )
-
-        upd_grade = st.text_input(
-            "Grade",
-            value=student_data.get("grade", ""),
-        )
-
-        upd_teacher = st.text_input(
-            "Teacher",
-            value=student_data.get("teacher", ""),
-        )
-
-        upd_subject = st.text_input(
-            "Subject",
-            value=student_data.get("subject", ""),
-        )
-
-        if st.button("Update Student"):
-            student_id = student_data["id"]
-
-            res = requests.put(
-                f"{url}/student/{student_id}",
-                json={
-                    "name": upd_name,
-                    "grade": upd_grade,
-                    "teacher": upd_teacher,
-                    "subject": upd_subject,
-                },
-            )
-
-            if res.status_code == 200:
-                st.success("Student updated successfully")
-            else:
-                st.error(res.text)
+        if res.status_code == 200:
+            st.success("Updated")
+        else:
+            st.error(res.text)
 
 
 elif action == "Delete":
